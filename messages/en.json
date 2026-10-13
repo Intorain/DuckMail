@@ -107,7 +107,8 @@
     "mailboxCount": "{count} mailboxes",
     "prevPage": "Previous page",
     "nextPage": "Next page",
-    "updates": "Updates",
+    "announcements": "Announcements",
+    "unreadAnnouncement": "Announcements (new)",
     "api": "API Docs",
     "faq": "FAQ",
     "privacy": "Privacy",
@@ -303,19 +304,16 @@
     "fetchFailed": "Failed to fetch domains",
     "private": "Private"
   },
-  "updateNotice": {
-    "title": "System Update Notice",
-    "date": "January 16, 2026",
-    "storageUpgrade": "Storage System Upgrade",
-    "storageUpgradeDesc": "Due to some issues with the previous storage method affecting API performance, we restructured the backend storage on January 16, 2026, adopting a more efficient storage approach.",
-    "accountDataNotice": "Account Data Notice",
-    "accountDataNoticeDesc": "Due to storage compatibility issues, previous account information was not migrated. If you need to use your original account, simply create it again with the same username. This will not affect your future email receiving functionality.",
-    "howToRecover": "How to Recover Your Account",
-    "recoverStep1": "Create a new account with the same username as before",
-    "recoverStep2": "Set a new password (can be the same or different from before)",
-    "recoverStep3": "Emails to your original address will continue to be received normally",
-    "apology": "We apologize for any inconvenience caused by this update. Thank you for your support of DuckMail!",
-    "understand": "I Understand"
+  "announcement": {
+    "title": "Announcement",
+    "date": "October 13, 2026",
+    "freeTitle": "Free, with no ads and no fees",
+    "freeDesc": "DuckMail is currently completely free to use: no ads, no charges. Enjoy!",
+    "supportTitle": "Support DuckMail",
+    "supportDesc": "If DuckMail has been helpful to you, please consider giving the project a Star on GitHub. That's the best way to sponsor and encourage us.",
+    "thanks": "Thank you for supporting DuckMail!",
+    "starOnGithub": "Star on GitHub",
+    "close": "Got it"
   },
   "providerWarning": {
     "title": "Switch API Provider",

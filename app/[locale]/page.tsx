@@ -9,7 +9,7 @@ import CreatingState from "@/components/creating-state"
 import InboxIntro from "@/components/inbox-intro"
 import AccountModal from "@/components/account-modal"
 import LoginModal from "@/components/login-modal"
-import UpdateNoticeModal from "@/components/update-notice-modal"
+import AnnouncementModal, { UnreadDot, useAnnouncementUnread } from "@/components/announcement-modal"
 import HostedMessageList from "@/components/hosted-message-list"
 import MessageList from "@/components/message-list"
 import MessageDetail from "@/components/message-detail"
@@ -24,7 +24,7 @@ import { useTranslations, useLocale } from "next-intl"
 import { useRouter, usePathname } from "@/i18n/navigation"
 import { CheckCircle, Navigation, RefreshCw, Menu, AlertCircle, Languages } from "lucide-react"
 import { Button } from "@heroui/button"
-import { DUCKMAIL_LOGO_PATH } from "@/lib/brand"
+import { DUCKMAIL_GITHUB_URL, DUCKMAIL_LOGO_PATH } from "@/lib/brand"
 
 // 生成随机字符串，用于用户名和密码
 function generateRandomString(length: number) {
@@ -62,27 +62,14 @@ function MainContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isCreatingAccount, setIsCreatingAccount] = useState(false)
   const autoCreateTriedRef = useRef(false)
-  const [isUpdateNoticeModalOpen, setIsUpdateNoticeModalOpen] = useState(false)
+  const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false)
+  const [hasUnreadAnnouncement, markAnnouncementRead] = useAnnouncementUnread()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const t = useTranslations("mainPage")
   const locale = useLocale()
   const router = useRouter()
   const pathname = usePathname()
-
-  // 检查是否需要显示更新通知（仅显示一次）
-  useEffect(() => {
-    if (typeof window === "undefined") return
-
-    const noticeShown = localStorage.getItem("duckmail-update-notice-2026-01-16")
-    if (!noticeShown) {
-      const timer = setTimeout(() => {
-        setIsUpdateNoticeModalOpen(true)
-        localStorage.setItem("duckmail-update-notice-2026-01-16", "true")
-      }, 500)
-      return () => clearTimeout(timer)
-    }
-  }, [])
 
   useEffect(() => {
     const onNeed = (event: Event) => {
@@ -231,13 +218,14 @@ function MainContent() {
       return
     }
 
-    if (item === "update-notice") {
-      setIsUpdateNoticeModalOpen(true)
+    if (item === "announcement") {
+      setIsAnnouncementOpen(true)
+      markAnnouncementRead()
       return
     }
 
     if (item === "github") {
-      window.open("https://github.com/moonwesif/DuckMail", "_blank", "noopener,noreferrer")
+      window.open(DUCKMAIL_GITHUB_URL, "_blank", "noopener,noreferrer")
       return
     }
 
@@ -272,6 +260,7 @@ function MainContent() {
     onLogin: handleLogin,
     onOpenSettings: () => setIsSettingsOpen(true),
     isCreating: isCreatingAccount,
+    hasUnreadAnnouncement,
   }
 
   return (
@@ -293,7 +282,10 @@ function MainContent() {
                   className="text-gray-600 dark:text-gray-300"
                   aria-label={t("openMenu")}
                 >
-                  <Menu size={20} />
+                  <span className="relative">
+                    <Menu size={20} />
+                    {hasUnreadAnnouncement && <UnreadDot />}
+                  </span>
                 </Button>
               ) : (
                 <div className="w-8" />
@@ -397,9 +389,9 @@ function MainContent() {
         onClose={handleCloseLoginModal}
         accountAddress={loginAccountAddress}
       />
-      <UpdateNoticeModal
-        isOpen={isUpdateNoticeModalOpen}
-        onClose={() => setIsUpdateNoticeModalOpen(false)}
+      <AnnouncementModal
+        isOpen={isAnnouncementOpen}
+        onClose={() => setIsAnnouncementOpen(false)}
       />
     </>
   )

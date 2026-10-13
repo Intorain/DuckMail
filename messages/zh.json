@@ -107,7 +107,8 @@
     "mailboxCount": "{count} 个邮箱",
     "prevPage": "上一页",
     "nextPage": "下一页",
-    "updates": "更新通知",
+    "announcements": "公告",
+    "unreadAnnouncement": "公告（有新消息）",
     "api": "API 文档",
     "faq": "常见问题",
     "privacy": "隐私政策",
@@ -303,19 +304,16 @@
     "fetchFailed": "获取域名失败",
     "private": "私有"
   },
-  "updateNotice": {
-    "title": "系统更新通知",
-    "date": "2026年1月16日",
-    "storageUpgrade": "存储系统升级",
-    "storageUpgradeDesc": "由于之前系统的存储方式存在部分问题，影响了 API 性能，因此在 2026 年 1 月 16 日进行了后端的存储方式重构，采取更加高效化的存储方式。",
-    "accountDataNotice": "账户数据说明",
-    "accountDataNoticeDesc": "由于存储方式的兼容性问题，之前的账户信息并没有迁移保留。如果您需要使用原账户，请使用相同的用户名再次创建一次即可，不影响后续的正常接码使用。",
-    "howToRecover": "如何恢复原账户",
-    "recoverStep1": "使用与之前相同的用户名创建新账户",
-    "recoverStep2": "设置一个新密码（可以与之前相同或不同）",
-    "recoverStep3": "原邮箱地址的邮件将继续正常接收",
-    "apology": "对于此次更新带来的不便，我们深表歉意。感谢您对 DuckMail 的支持！",
-    "understand": "我知道了"
+  "announcement": {
+    "title": "公告",
+    "date": "2026年10月13日",
+    "freeTitle": "免费运行，无广告、无收费",
+    "freeDesc": "DuckMail 目前完全免费运行，没有广告，也不收取任何费用，请放心使用。",
+    "supportTitle": "支持一下 DuckMail",
+    "supportDesc": "如果 DuckMail 对你有帮助，欢迎到 GitHub 给项目点一个 Star，这就是对我们最好的赞助和鼓励。",
+    "thanks": "感谢你对 DuckMail 的支持！",
+    "starOnGithub": "去 GitHub 点 Star",
+    "close": "我知道了"
   },
   "providerWarning": {
     "title": "切换 API 提供商",

@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { DUCKMAIL_LOGO_PATH } from "@/lib/brand";
+import { UnreadDot } from "@/components/announcement-modal";
 import { useAuth } from "@/contexts/auth-context";
 import { useApiProvider } from "@/contexts/api-provider-context";
 import { useHeroUIToast } from "@/hooks/use-heroui-toast";
@@ -50,7 +51,7 @@ import { listHostedAccounts } from "@/lib/hosting-api";
 import type { Account } from "@/types";
 
 export type SidebarNavItem =
-  "inbox" | "update-notice" | "api" | "faq" | "privacy" | "github";
+  "inbox" | "announcement" | "api" | "faq" | "privacy" | "github";
 
 interface SidebarProps {
   onItemClick: (item: SidebarNavItem) => void;
@@ -59,6 +60,7 @@ interface SidebarProps {
   onLogin: () => void;
   onOpenSettings: () => void;
   isCreating?: boolean;
+  hasUnreadAnnouncement?: boolean;
   isMobile?: boolean;
   onClose?: () => void;
 }
@@ -104,6 +106,7 @@ export default function Sidebar({
   onLogin,
   onOpenSettings,
   isCreating = false,
+  hasUnreadAnnouncement = false,
   isMobile = false,
   onClose,
 }: SidebarProps) {
@@ -364,7 +367,13 @@ export default function Sidebar({
     label: string;
     icon: typeof Bell;
   }[] = [
-    { id: "update-notice", label: t("updates"), icon: Bell },
+    {
+      id: "announcement",
+      label: hasUnreadAnnouncement
+        ? t("unreadAnnouncement")
+        : t("announcements"),
+      icon: Bell,
+    },
     { id: "api", label: t("api"), icon: Code },
     { id: "faq", label: t("faq"), icon: HelpCircle },
     { id: "privacy", label: t("privacy"), icon: ShieldCheck },
@@ -803,7 +812,12 @@ export default function Sidebar({
                 className="h-8 w-8 min-w-8 text-default-500"
                 onPress={() => onItemClick(id)}
               >
-                <Icon size={16} />
+                <span className="relative">
+                  <Icon size={16} />
+                  {id === "announcement" && hasUnreadAnnouncement && (
+                    <UnreadDot />
+                  )}
+                </span>
               </Button>
             </Tooltip>
           ))}
