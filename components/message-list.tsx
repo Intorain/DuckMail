@@ -1,18 +1,16 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, type ReactNode } from "react"
 import { Spinner } from "@heroui/spinner"
 import { getMessages } from "@/lib/api"
 import type { Message } from "@/types"
 import { useAuth } from "@/contexts/auth-context"
 import { useMailChecker } from "@/hooks/use-mail-checker"
-import { useHeroUIToast } from "@/hooks/use-heroui-toast"
 import { useMailStatus } from "@/contexts/mail-status-context"
-import { useIsMobile } from "@/hooks/use-mobile"
 import { Mail } from "lucide-react"
 import { useTranslations } from "next-intl"
 import InboxIntro from "@/components/inbox-intro"
-import MessageCard from "@/components/message-card"
+import MessageRow from "@/components/message-row"
 import { useVerificationCodes } from "@/hooks/use-verification-codes"
 
 interface MessageListProps {
@@ -25,9 +23,7 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { token, currentAccount } = useAuth()
-  const { toast } = useHeroUIToast()
   const { isEnabled } = useMailStatus()
-  const isMobile = useIsMobile()
   const t = useTranslations("messageList")
   // 请求序号：切换账号 / 手动刷新时递增，只有最新一次请求的结果才允许写入状态，
   // 避免上一个账号仍在飞的请求（成功或失败）覆盖当前账号的数据
@@ -38,16 +34,12 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
     prefetchBody: true,
   })
 
-  // 处理新消息通知
-  const handleNewMessage = useCallback((message: Message) => {
-    toast({
-      title: t("newEmail"),
-      description: `${t("from")}: ${message.from.address}`,
-      color: "success",
-      variant: "flat",
-      icon: <Mail size={16} />,
-    })
-  }, [t, toast])
+  // "3 分钟前"这类相对时间需要定期刷新；列表本身只在邮件变化时才会重新渲染
+  const [, setNow] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(timer)
+  }, [])
 
   // 处理消息列表更新
   const handleMessagesUpdate = useCallback((newMessages: Message[]) => {
@@ -58,13 +50,12 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
     }
   }, [loading])
 
-  // 手动刷新邮件
+  // 手动刷新邮件：保留当前列表原地更新，不切回加载态，避免整屏闪一下
   const manualRefresh = useCallback(async () => {
     if (!token || !currentAccount) return
 
     const seq = ++loadSeqRef.current
     try {
-      setLoading(true)
       const providerId = currentAccount.providerId || "duckmail"
       const { messages: fetchedMessages } = await getMessages(token, 1, providerId)
       if (seq !== loadSeqRef.current) return
@@ -81,8 +72,8 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
     }
   }, [token, currentAccount, t])
 
+  // 列表可见时新邮件会直接出现在顶部，不再额外弹 toast
   useMailChecker({
-    onNewMessage: handleNewMessage,
     onMessagesUpdate: handleMessagesUpdate,
     interval: 2000,
     enabled: isEnabled,
@@ -141,36 +132,31 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
     }
   }, [refreshKey, manualRefresh])
 
+  // 加载 / 空 / 出错 / 列表几种状态共用同一个外框和标题，切换时标题位置不跳
+  const page = (children: ReactNode, status?: ReactNode) => (
+    <div className="w-full px-3 py-4 sm:px-6 sm:py-6">
+      <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
+        <h2 className="flex items-baseline gap-2 text-xl font-semibold text-gray-900 dark:text-gray-50">
+          {t("inbox")}
+          {messages.length > 0 && (
+            <span className="text-sm font-normal tabular-nums text-gray-400 dark:text-gray-500">{messages.length}</span>
+          )}
+        </h2>
+        {status}
+      </div>
+      {children}
+    </div>
+  )
+
   if (loading) {
     return (
-      <div className="h-full overflow-y-auto p-4">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("inbox")}</h2>
-        </div>
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <Spinner size="lg" color="primary" />
-            <p className="mt-4 text-gray-500 dark:text-gray-400">{t("loading")}</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="h-full overflow-y-auto p-4">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("inbox")}</h2>
-        </div>
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-red-500" />
-            </div>
-            <p className="text-red-500 font-medium">{error}</p>
-          </div>
-        </div>
+      <div className="h-full overflow-y-auto">
+        {page(
+          <div className="flex items-center justify-center gap-2 py-16 text-small text-gray-500 dark:text-gray-400">
+            <Spinner size="sm" color="default" />
+            {t("loading")}
+          </div>,
+        )}
       </div>
     )
   }
@@ -178,50 +164,48 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
   if (messages.length === 0) {
     return (
       <div className="h-full overflow-y-auto">
-        <div className={isMobile ? "p-2" : "p-4"}>
-          <div className={isMobile ? "mb-4" : "mb-6"}>
-            <h2 className={`${isMobile ? "text-xl" : "text-2xl"} font-bold text-gray-800 dark:text-gray-100`}>{t("inbox")}</h2>
-          </div>
+        {page(
           <div className="flex flex-col items-center py-16 text-center">
             <Mail className="mb-4 h-8 w-8 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
-            <h3 className="text-medium font-medium text-gray-800 dark:text-gray-100">{t("emptyTitle")}</h3>
-            <p className="mt-1.5 flex items-center gap-1.5 text-small text-gray-500 dark:text-gray-400">
-              <span className={`h-1.5 w-1.5 rounded-full ${isEnabled ? "bg-green-500" : "bg-gray-400"}`} />
-              {isEnabled ? t("autoChecking") : t("autoCheckPaused")}
-            </p>
-          </div>
-        </div>
+            {error ? (
+              <p role="alert" className="text-small text-danger">{error}</p>
+            ) : (
+              <>
+                <h3 className="text-medium font-medium text-gray-800 dark:text-gray-100">{t("emptyTitle")}</h3>
+                <p className="mt-1.5 flex items-center gap-1.5 text-small text-gray-500 dark:text-gray-400">
+                  <span className={`h-1.5 w-1.5 rounded-full ${isEnabled ? "bg-green-500" : "bg-gray-400"}`} />
+                  {isEnabled ? t("autoChecking") : t("autoCheckPaused")}
+                </p>
+              </>
+            )}
+          </div>,
+        )}
         {/* 收件箱为空时用简短的系统说明填充右侧空白，可向下滚动浏览 */}
-        <InboxIntro />
+        {!error && <InboxIntro />}
       </div>
     )
   }
 
   return (
-    <div className={`h-full w-full overflow-y-auto ${isMobile ? 'p-2' : 'p-4'}`}>
-      <div className={`${isMobile ? 'mb-4' : 'mb-6'} w-full`}>
-        <h2 className={`${isMobile ? 'text-xl' : 'text-2xl'} font-bold text-gray-800 dark:text-gray-100`}>
-          {t("inbox")}
-        </h2>
-        <div className={`flex items-center gap-2 text-xs text-gray-500 ${isMobile ? 'mt-1' : 'mt-2'} ${isMobile ? 'flex-wrap' : ''}`}>
-          <div
-            className={`w-2 h-2 rounded-full ${
-              isEnabled ? "bg-green-500 animate-pulse" : "bg-gray-400"
-            }`}
-          />
-          <span className={isMobile ? 'text-xs' : ''}>
-            {isEnabled ? t("pollingActive") : t("pollingPaused")}
-          </span>
-          <span className="text-xs text-gray-400 ml-2">
-            {t("messageCount")}: {messages.length}
-          </span>
-        </div>
-      </div>
-      <div className={`${isMobile ? 'space-y-2' : 'space-y-4'} w-full`}>
-        {messages.map((message) => (
-          <MessageCard key={message.id} message={message} code={codes.get(message.id)} onSelect={onSelectMessage} />
-        ))}
-      </div>
+    <div className="h-full overflow-y-auto">
+      {page(
+        <>
+          {error && (
+            <p role="alert" className="mb-3 text-small text-danger">
+              {error}
+            </p>
+          )}
+          <div className="rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
+            {messages.map((message) => (
+              <MessageRow key={message.id} message={message} code={codes.get(message.id)} onSelect={onSelectMessage} />
+            ))}
+          </div>
+        </>,
+        <span className="flex shrink-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+          <span className={`h-1.5 w-1.5 rounded-full ${isEnabled ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`} />
+          {isEnabled ? t("pollingActive") : t("pollingPaused")}
+        </span>,
+      )}
     </div>
   )
 }

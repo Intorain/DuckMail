@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useMailStatus } from "@/contexts/mail-status-context";
 import { getHostedMessagePage, syncHostedAccount } from "@/lib/api";
 import type { HostingStatus, Message } from "@/types";
-import VerificationCodeChip from "@/components/verification-code-chip";
+import MessageRow from "@/components/message-row";
 import { useVerificationCodes } from "@/hooks/use-verification-codes";
 
 function httpStatus(e: unknown) {
@@ -35,6 +35,8 @@ export default function HostedMessageList({
       currentAccount?.hosting,
     ),
     [busy, setBusy] = useState(false),
+    // 只有手动刷新才让按钮转圈；后台 3 秒轮询不应让按钮跟着闪
+    [refreshing, setRefreshing] = useState(false),
     [error, setError] = useState(""),
     [subject, setSubject] = useState(""),
     [from, setFrom] = useState(""),
@@ -51,6 +53,7 @@ export default function HostedMessageList({
       if (!token || !currentAccount) return;
       const seq = ++sequence.current;
       setBusy(true);
+      if (manual) setRefreshing(true);
       try {
         if (manual) {
           try {
@@ -70,7 +73,10 @@ export default function HostedMessageList({
         if (seq === sequence.current)
           setError(e instanceof Error ? e.message : t("loadFailed"));
       } finally {
-        if (seq === sequence.current) setBusy(false);
+        if (seq === sequence.current) {
+          setBusy(false);
+          setRefreshing(false);
+        }
       }
     },
     [token, currentAccount?.id, page, filters, t],
@@ -111,180 +117,156 @@ export default function HostedMessageList({
           ? t("stale")
           : "";
   return (
-    <div className="h-full overflow-y-auto bg-white p-4 text-gray-800 dark:bg-gray-900 dark:text-gray-100 md:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-semibold">{t("inbox")}</h2>
-          <p className="mt-1 text-xs text-default-500">
-            {t("hosted")} ·{" "}
-            {sync?.lastSuccessAt
-              ? t("lastSync", {
-                  time: new Date(sync.lastSuccessAt).toLocaleString(),
-                })
-              : t("notSynced")}
-          </p>
+    <div className="h-full overflow-y-auto">
+      <div className="w-full px-3 py-4 text-gray-800 dark:text-gray-100 sm:px-6 sm:py-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 sm:mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-50">{t("inbox")}</h2>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {t("hosted")} ·{" "}
+              {sync?.lastSuccessAt
+                ? t("lastSync", {
+                    time: new Date(sync.lastSuccessAt).toLocaleString(),
+                  })
+                : t("notSynced")}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="flat"
+            isLoading={refreshing}
+            onPress={() => load(true)}
+            startContent={!refreshing ? <RefreshCw size={16} /> : undefined}
+          >
+            {t("refresh")}
+          </Button>
         </div>
-        <Button
-          variant="flat"
-          isLoading={busy}
-          onPress={() => load(true)}
-          startContent={!busy ? <RefreshCw size={16} /> : undefined}
-        >
-          {t("refresh")}
-        </Button>
-      </div>
-      {warning && (
-        <p
-          role="status"
-          className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
-        >
-          {warning}
-          {sync?.errorMessage && (
-            <span className="block">{sync.errorMessage}</span>
-          )}
-        </p>
-      )}
-      {sync?.truncated && (
-        <p className="mb-3 text-sm text-amber-700">{t("truncated")}</p>
-      )}
-      {error && (
-        <p
-          role="alert"
-          className="mb-3 rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-100"
-        >
-          {error}
-        </p>
-      )}
-      <details className="mb-4 rounded-lg border border-default-200 p-3 text-sm">
-        <summary className="cursor-pointer">{t("filter")}</summary>
-        <div className="mt-3 grid items-end gap-3 sm:grid-cols-2">
-          <Input
-            size="sm"
-            labelPlacement="outside"
-            label={t("from")}
-            placeholder={t("fromPlaceholder")}
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-          <Input
-            size="sm"
-            labelPlacement="outside"
-            label={t("subject")}
-            placeholder={t("subjectPlaceholder")}
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          />
-          <Input
-            size="sm"
-            labelPlacement="outside"
-            label={t("after")}
-            placeholder=" "
-            type="datetime-local"
-            value={after}
-            onChange={(e) => setAfter(e.target.value)}
-          />
-          <div className="flex items-end gap-2">
+        {warning && (
+          <p
+            role="status"
+            className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+          >
+            {warning}
+            {sync?.errorMessage && (
+              <span className="block">{sync.errorMessage}</span>
+            )}
+          </p>
+        )}
+        {sync?.truncated && (
+          <p className="mb-3 text-sm text-amber-700">{t("truncated")}</p>
+        )}
+        {error && (
+          <p
+            role="alert"
+            className="mb-3 rounded bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-100"
+          >
+            {error}
+          </p>
+        )}
+        <details className="mb-4 rounded-lg border border-default-200 p-3 text-sm">
+          <summary className="cursor-pointer">{t("filter")}</summary>
+          <div className="mt-3 grid items-end gap-3 sm:grid-cols-2">
+            <Input
+              size="sm"
+              labelPlacement="outside"
+              label={t("from")}
+              placeholder={t("fromPlaceholder")}
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+            <Input
+              size="sm"
+              labelPlacement="outside"
+              label={t("subject")}
+              placeholder={t("subjectPlaceholder")}
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+            <Input
+              size="sm"
+              labelPlacement="outside"
+              label={t("after")}
+              placeholder=" "
+              type="datetime-local"
+              value={after}
+              onChange={(e) => setAfter(e.target.value)}
+            />
+            <div className="flex items-end gap-2">
+              <Button
+                size="sm"
+                color="primary"
+                onPress={() => {
+                  setFilters({
+                    from,
+                    subject,
+                    receivedAfter: after ? new Date(after).toISOString() : "",
+                  });
+                  setPage(1);
+                }}
+              >
+                {t("applyFilter")}
+              </Button>
+              <Button
+                size="sm"
+                variant="light"
+                onPress={() => {
+                  setFrom("");
+                  setSubject("");
+                  setAfter("");
+                  setFilters({});
+                  setPage(1);
+                }}
+              >
+                {t("clearFilter")}
+              </Button>
+            </div>
+          </div>
+        </details>
+        {busy && !messages.length ? (
+          <div className="py-10 text-center">
+            <Spinner />
+          </div>
+        ) : !messages.length ? (
+          <div className="py-12 text-center text-default-500">
+            <Mail className="mx-auto mb-3 h-8 w-8" />
+            <p>
+              {!sync?.initialSyncComplete
+                ? t("indexingEmpty")
+                : sync?.stale
+                  ? t("staleEmpty")
+                  : t("noMatch")}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
+            {messages.map((m) => (
+              <MessageRow
+                key={m.id}
+                message={m}
+                code={codes.get(m.id)}
+                onSelect={onSelectMessage}
+              />
+            ))}
+          </div>
+        )}
+        <div className="mt-4 flex items-center justify-between gap-2 text-xs text-default-500">
+          <span>{t("rangeTotal", { total })}</span>
+          <div className="flex gap-2">
             <Button
               size="sm"
-              color="primary"
-              onPress={() => {
-                setFilters({
-                  from,
-                  subject,
-                  receivedAfter: after ? new Date(after).toISOString() : "",
-                });
-                setPage(1);
-              }}
+              isDisabled={page === 1}
+              onPress={() => setPage((p) => p - 1)}
             >
-              {t("applyFilter")}
+              {t("prevPage")}
             </Button>
             <Button
               size="sm"
-              variant="light"
-              onPress={() => {
-                setFrom("");
-                setSubject("");
-                setAfter("");
-                setFilters({});
-                setPage(1);
-              }}
+              isDisabled={page * 30 >= total}
+              onPress={() => setPage((p) => p + 1)}
             >
-              {t("clearFilter")}
+              {t("nextPage")}
             </Button>
           </div>
-        </div>
-      </details>
-      {busy && !messages.length ? (
-        <div className="py-10 text-center">
-          <Spinner />
-        </div>
-      ) : !messages.length ? (
-        <div className="py-12 text-center text-default-500">
-          <Mail className="mx-auto mb-3 h-8 w-8" />
-          <p>
-            {!sync?.initialSyncComplete
-              ? t("indexingEmpty")
-              : sync?.stale
-                ? t("staleEmpty")
-                : t("noMatch")}
-          </p>
-        </div>
-      ) : (
-        <div className="divide-y divide-default-200 rounded-lg border border-default-200">
-          {messages.map((m) => (
-            // 行内有复制验证码按钮，不能用 <button> 包裹，改用 role="button"
-            <div
-              key={m.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelectMessage(m)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelectMessage(m);
-                }
-              }}
-              className="block w-full cursor-pointer p-4 text-left outline-none hover:bg-default-50 focus-visible:bg-default-100"
-            >
-              <div className="mb-2 flex items-center justify-between gap-3 text-xs text-default-500">
-                <span>{m.from.name || m.from.address}</span>
-                <time>{new Date(m.createdAt).toLocaleString()}</time>
-              </div>
-              <p className={`text-sm ${m.seen ? "" : "font-semibold"}`}>
-                {!m.seen && (
-                  <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-primary" />
-                )}
-                {m.subject || t("noSubject")}
-              </p>
-              <p className="mt-1 truncate text-xs text-default-500">
-                {m.intro}
-              </p>
-              {codes.has(m.id) && (
-                <div className="mt-2">
-                  <VerificationCodeChip code={codes.get(m.id)!} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="mt-4 flex items-center justify-between gap-2 text-xs text-default-500">
-        <span>{t("rangeTotal", { total })}</span>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            isDisabled={page === 1}
-            onPress={() => setPage((p) => p - 1)}
-          >
-            {t("prevPage")}
-          </Button>
-          <Button
-            size="sm"
-            isDisabled={page * 30 >= total}
-            onPress={() => setPage((p) => p + 1)}
-          >
-            {t("nextPage")}
-          </Button>
         </div>
       </div>
     </div>

@@ -156,21 +156,21 @@
     "loading": "Loading emails...",
     "emptyTitle": "Inbox is empty",
     "emptyDesc": "You haven't received any emails yet. When you do, they'll show up here as beautiful cards.",
-    "newEmail": "New Email Received",
-    "from": "From",
-    "new": "New",
-    "pollingActive": "🔄 Polling for new messages (2s interval)",
-    "pollingPaused": "⏸ Polling paused",
+        "unread": "Unread",
+    "noSubject": "(No subject)",
+    "pollingActive": "Receiving automatically",
+    "pollingPaused": "Auto-receive paused",
     "autoChecking": "Checking for new mail automatically — it will appear here instantly",
     "autoCheckPaused": "Auto-check is paused. Use Refresh at the top to fetch manually",
-    "messageCount": "Messages",
-    "fetchError": "Failed to fetch emails. Please try again.",
+        "fetchError": "Failed to fetch emails. Please try again.",
     "refreshError": "Failed to refresh emails. Please try again."
   },
   "verificationCode": {
     "label": "Code",
     "copy": "Copy code",
-    "copied": "Code copied"
+    "copied": "Code copied",
+    "copyShort": "Copy",
+    "copiedShort": "Copied"
   },
   "hostedInbox": {
     "inbox": "Inbox",

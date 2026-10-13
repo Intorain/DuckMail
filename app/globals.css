@@ -24,6 +24,92 @@ a {
   text-decoration: none;
 }
 
+@layer components {
+  /* 收件箱行。悬停时行下方淡入一张圆角浮起的卡片（::before），整行像被轻轻托起；
+     分隔线（::after）从文字起点开始，悬停行上下两条随卡片一起淡出，不留断头线 */
+  .mail-row {
+    position: relative;
+    isolation: isolate;
+    border-radius: 8px;
+    outline: none;
+  }
+  .mail-row::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: #fff;
+    box-shadow:
+      0 0 0 1px rgb(15 23 42 / 0.06),
+      0 1px 3px rgb(15 23 42 / 0.08),
+      0 6px 16px -4px rgb(15 23 42 / 0.14);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  .mail-row + .mail-row::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 24px;
+    right: 12px;
+    height: 1px;
+    background: rgb(243 244 246);
+    transition: opacity 150ms ease;
+  }
+  @media (min-width: 640px) {
+    .mail-row + .mail-row::after {
+      left: 28px;
+      right: 16px;
+    }
+  }
+  .dark .mail-row::before {
+    background: rgb(31 41 55);
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.06),
+      0 1px 2px rgb(0 0 0 / 0.4),
+      0 4px 12px -2px rgb(0 0 0 / 0.5);
+  }
+  .dark .mail-row + .mail-row::after {
+    background: rgb(31 41 55);
+  }
+
+  .mail-row:focus-visible {
+    z-index: 1;
+  }
+  .mail-row:focus-visible::before {
+    opacity: 1;
+    box-shadow:
+      0 0 0 2px hsl(var(--heroui-primary) / 0.5),
+      0 6px 16px -4px rgb(15 23 42 / 0.14);
+  }
+  .mail-row:focus-visible::after,
+  .mail-row:focus-visible + .mail-row::after {
+    opacity: 0;
+  }
+
+  /* 只在有鼠标的设备上启用，避免触屏点按后悬停态残留 */
+  @media (hover: hover) {
+    .mail-row:hover {
+      z-index: 1;
+    }
+    .mail-row:hover::before {
+      opacity: 1;
+    }
+    .mail-row:hover::after,
+    .mail-row:hover + .mail-row::after {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mail-row::before,
+    .mail-row::after {
+      transition: none;
+    }
+  }
+}
+
 /* 移动端优化 */
 @media (max-width: 768px) {
   /* 防止移动端缩放 */
