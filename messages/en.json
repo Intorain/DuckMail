@@ -167,6 +167,11 @@
     "fetchError": "Failed to fetch emails. Please try again.",
     "refreshError": "Failed to refresh emails. Please try again."
   },
+  "verificationCode": {
+    "label": "Code",
+    "copy": "Copy code",
+    "copied": "Code copied"
+  },
   "hostedInbox": {
     "inbox": "Inbox",
     "junk": "Junk",

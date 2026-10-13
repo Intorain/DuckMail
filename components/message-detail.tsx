@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Button } from "@heroui/button"
 import { Card, CardBody } from "@heroui/card"
 import { Spinner } from "@heroui/spinner"
@@ -14,6 +14,8 @@ import { format } from "date-fns"
 import { enUS, zhCN } from "date-fns/locale"
 import { useHeroUIToast } from "@/hooks/use-heroui-toast"
 import { useTranslations, useLocale } from "next-intl"
+import VerificationCodeChip from "@/components/verification-code-chip"
+import { extractVerificationCode } from "@/lib/verification-code"
 
 // 邮件内容渲染组件 - 使用 iframe 隔离样式
 function EmailContent({ html, text, isMobile }: { html?: string[]; text?: string; isMobile: boolean }) {
@@ -131,6 +133,13 @@ export default function MessageDetail({ message, onBack, onDelete }: MessageDeta
   const locale = useLocale()
 
   const localeDate = locale === "en" ? enUS : zhCN
+  const verificationCode = useMemo(
+    () =>
+      messageDetail
+        ? extractVerificationCode({ subject: messageDetail.subject, text: messageDetail.text, html: messageDetail.html })
+        : null,
+    [messageDetail],
+  )
 
   useEffect(() => {
     // 请求期间切换了邮件 / 账号时，丢弃旧请求的结果
@@ -269,6 +278,12 @@ export default function MessageDetail({ message, onBack, onDelete }: MessageDeta
           )}
         </div>
       </div>
+
+      {verificationCode && (
+        <div className={isMobile ? "mb-3" : "mb-4"}>
+          <VerificationCodeChip code={verificationCode} variant="banner" />
+        </div>
+      )}
 
       <Card className={`${isMobile ? 'mb-3' : 'mb-4'} shadow-lg border border-gray-200 dark:border-gray-700`}>
         <CardBody className={isMobile ? "p-3" : "p-6"}>

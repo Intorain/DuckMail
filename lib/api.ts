@@ -639,7 +639,25 @@ export async function getAccount(token: string, providerId?: string): Promise<Ac
 }
 
 // 获取消息列表（只需要 JWT Token）- 带自动token刷新
+// 开发环境 mock 收件箱：本地打开 ?mock=1 开启、?mock=0 关闭，在当前标签页内保持。
+// 判断里带上 NODE_ENV，生产构建会把 mock 分支和 lib/mock-mail 一起裁掉。
+const MOCK_MAIL_KEY = "duckmail-mock-mail"
+function isMockMailEnabled(): boolean {
+  if (process.env.NODE_ENV === "production" || typeof window === "undefined") return false
+  try {
+    const flag = new URLSearchParams(window.location.search).get("mock")
+    if (flag === "1") sessionStorage.setItem(MOCK_MAIL_KEY, "1")
+    else if (flag === "0") sessionStorage.removeItem(MOCK_MAIL_KEY)
+    return sessionStorage.getItem(MOCK_MAIL_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
 export async function getMessages(token: string, page = 1, providerId?: string): Promise<{ messages: Message[]; total: number; hasMore: boolean }> {
+  if (process.env.NODE_ENV !== "production" && isMockMailEnabled()) {
+    return (await import("@/lib/mock-mail")).mockGetMessages()
+  }
   const response = await authorizedRequest(`/messages?page=${page}`, token, providerId)
 
   const data = await response.json()
@@ -658,12 +676,18 @@ export async function getMessages(token: string, page = 1, providerId?: string):
 
 // 获取单条消息详情（只需要 JWT Token）- 带自动token刷新
 export async function getMessage(token: string, id: string, providerId?: string): Promise<MessageDetail> {
+  if (process.env.NODE_ENV !== "production" && isMockMailEnabled()) {
+    return (await import("@/lib/mock-mail")).mockGetMessage(id)
+  }
   const response = await authorizedRequest(`/messages/${id}`, token, providerId)
   return response.json()
 }
 
 // 标记消息为已读（只需要 JWT Token）- 带自动token刷新
 export async function markMessageAsRead(token: string, id: string, providerId?: string): Promise<{ seen: boolean }> {
+  if (process.env.NODE_ENV !== "production" && isMockMailEnabled()) {
+    return (await import("@/lib/mock-mail")).mockMarkSeen(id)
+  }
   const response = await authorizedRequest(
     `/messages/${id}`,
     token,
@@ -680,6 +704,9 @@ export async function markMessageAsRead(token: string, id: string, providerId?: 
 
 // 删除消息（只需要 JWT Token）- 带自动token刷新
 export async function deleteMessage(token: string, id: string, providerId?: string): Promise<void> {
+  if (process.env.NODE_ENV !== "production" && isMockMailEnabled()) {
+    return (await import("@/lib/mock-mail")).mockDelete(id)
+  }
   await authorizedRequest(`/messages/${id}`, token, providerId, { method: "DELETE" })
 }
 

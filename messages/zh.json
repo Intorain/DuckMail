@@ -167,6 +167,11 @@
     "fetchError": "获取邮件失败，请稍后再试",
     "refreshError": "刷新邮件失败，请稍后再试"
   },
+  "verificationCode": {
+    "label": "验证码",
+    "copy": "复制验证码",
+    "copied": "验证码已复制"
+  },
   "hostedInbox": {
     "inbox": "收件箱",
     "junk": "垃圾邮件",

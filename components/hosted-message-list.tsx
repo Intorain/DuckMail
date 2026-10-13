@@ -9,6 +9,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { useMailStatus } from "@/contexts/mail-status-context";
 import { getHostedMessagePage, syncHostedAccount } from "@/lib/api";
 import type { HostingStatus, Message } from "@/types";
+import VerificationCodeChip from "@/components/verification-code-chip";
+import { useVerificationCodes } from "@/hooks/use-verification-codes";
 
 function httpStatus(e: unknown) {
   const match =
@@ -39,6 +41,11 @@ export default function HostedMessageList({
     [after, setAfter] = useState(""),
     [filters, setFilters] = useState<Record<string, string>>({});
   const sequence = useRef(0);
+  // 托管邮件列表自带摘要；拉取远端正文代价高，只用主题 + 摘要识别
+  const codes = useVerificationCodes(messages, {
+    token,
+    providerId: currentAccount?.providerId || "duckmail",
+  });
   const load = useCallback(
     async (manual = false) => {
       if (!token || !currentAccount) return;
@@ -225,11 +232,19 @@ export default function HostedMessageList({
       ) : (
         <div className="divide-y divide-default-200 rounded-lg border border-default-200">
           {messages.map((m) => (
-            <button
+            // 行内有复制验证码按钮，不能用 <button> 包裹，改用 role="button"
+            <div
               key={m.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => onSelectMessage(m)}
-              className="block w-full p-4 text-left hover:bg-default-50"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectMessage(m);
+                }
+              }}
+              className="block w-full cursor-pointer p-4 text-left outline-none hover:bg-default-50 focus-visible:bg-default-100"
             >
               <div className="mb-2 flex items-center justify-between gap-3 text-xs text-default-500">
                 <span>{m.from.name || m.from.address}</span>
@@ -244,7 +259,12 @@ export default function HostedMessageList({
               <p className="mt-1 truncate text-xs text-default-500">
                 {m.intro}
               </p>
-            </button>
+              {codes.has(m.id) && (
+                <div className="mt-2">
+                  <VerificationCodeChip code={codes.get(m.id)!} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
