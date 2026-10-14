@@ -10,7 +10,12 @@ import { useMailStatus } from "@/contexts/mail-status-context";
 import { getHostedMessagePage, syncHostedAccount } from "@/lib/api";
 import type { HostingStatus, Message } from "@/types";
 import MessageRow from "@/components/message-row";
-import { useVerificationCodes } from "@/hooks/use-verification-codes";
+import SelectionHighlight from "@/components/selection-highlight";
+import { useVerificationHints } from "@/hooks/use-verification-hints";
+import {
+  useVisibleMessages,
+  type MessageOverrides,
+} from "@/hooks/use-visible-messages";
 
 function httpStatus(e: unknown) {
   const match =
@@ -21,9 +26,12 @@ function httpStatus(e: unknown) {
 export default function HostedMessageList({
   onSelectMessage,
   refreshKey,
-}: {
+  selectedId,
+  ...overrides
+}: MessageOverrides & {
   onSelectMessage: (m: Message) => void;
   refreshKey: number;
+  selectedId?: string | null;
 }) {
   const t = useTranslations("hostedInbox");
   const { isEnabled } = useMailStatus();
@@ -44,10 +52,11 @@ export default function HostedMessageList({
     [filters, setFilters] = useState<Record<string, string>>({});
   const sequence = useRef(0);
   // 托管邮件列表自带摘要；拉取远端正文代价高，只用主题 + 摘要识别
-  const codes = useVerificationCodes(messages, {
+  const { codes, links } = useVerificationHints(messages, {
     token,
     providerId: currentAccount?.providerId || "duckmail",
   });
+  const visible = useVisibleMessages(messages, overrides);
   const load = useCallback(
     async (manual = false) => {
       if (!token || !currentAccount) return;
@@ -117,7 +126,7 @@ export default function HostedMessageList({
           ? t("stale")
           : "";
   return (
-    <div className="h-full overflow-y-auto">
+    <div data-mail-scroller className="h-full overflow-y-auto">
       <div className="w-full px-3 py-4 text-gray-800 dark:text-gray-100 sm:px-6 sm:py-6">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 sm:mb-4">
           <div>
@@ -132,6 +141,7 @@ export default function HostedMessageList({
             </p>
           </div>
           <Button
+            data-inbox-aside
             size="sm"
             variant="flat"
             isLoading={refreshing}
@@ -222,11 +232,11 @@ export default function HostedMessageList({
             </div>
           </div>
         </details>
-        {busy && !messages.length ? (
+        {busy && !visible.length ? (
           <div className="py-10 text-center">
             <Spinner />
           </div>
-        ) : !messages.length ? (
+        ) : !visible.length ? (
           <div className="py-12 text-center text-default-500">
             <Mail className="mx-auto mb-3 h-8 w-8" />
             <p>
@@ -238,12 +248,15 @@ export default function HostedMessageList({
             </p>
           </div>
         ) : (
-          <div className="rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
-            {messages.map((m) => (
+          <div className="mail-list rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
+            <SelectionHighlight selectedId={selectedId} layoutKey={visible} />
+            {visible.map((m) => (
               <MessageRow
                 key={m.id}
                 message={m}
                 code={codes.get(m.id)}
+                link={links.get(m.id)}
+                selected={m.id === selectedId}
                 onSelect={onSelectMessage}
               />
             ))}

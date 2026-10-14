@@ -25,6 +25,34 @@ a {
 }
 
 @layer components {
+  /* 收件箱列表外框，作为行布局的容器查询目标（见 tailwind.config.js 的 list-wide 变体） */
+  .mail-list {
+    position: relative;
+    container: mail-list / inline-size;
+  }
+
+  /* 选中底色：列表外框里一块独立的高亮（components/selection-highlight.tsx），切换邮件时滑到新的一行。
+     位置和高度由脚本写入，放在所有行之前，行的内容画在它上面 */
+  .mail-highlight {
+    position: absolute;
+    top: 0;
+    left: 4px;
+    right: 4px;
+    height: 0;
+    border-radius: 8px;
+    background: color-mix(in srgb, theme("colors.primary.DEFAULT") 9%, #fff);
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform;
+    transition:
+      transform 280ms cubic-bezier(0.2, 0, 0, 1),
+      height 280ms cubic-bezier(0.2, 0, 0, 1),
+      opacity 160ms ease;
+  }
+  .dark .mail-highlight {
+    background: color-mix(in srgb, theme("colors.primary.DEFAULT") 18%, rgb(17 24 39));
+  }
+
   /* 收件箱行。悬停时行下方淡入一张圆角浮起的卡片（::before），整行像被轻轻托起；
      分隔线（::after）从文字起点开始，悬停行上下两条随卡片一起淡出，不留断头线 */
   .mail-row {
@@ -80,7 +108,7 @@ a {
   .mail-row:focus-visible::before {
     opacity: 1;
     box-shadow:
-      0 0 0 2px hsl(var(--heroui-primary) / 0.5),
+      0 0 0 2px color-mix(in srgb, theme("colors.primary.DEFAULT") 55%, transparent),
       0 6px 16px -4px rgb(15 23 42 / 0.14);
   }
   .mail-row:focus-visible::after,
@@ -102,11 +130,137 @@ a {
     }
   }
 
+  /* 当前在阅读面板中打开的邮件：底色由上面的 .mail-highlight 负责，行自己不再浮起，和悬停区分开；
+     放在悬停规则之后以覆盖它。刚点中时行上的悬停卡片按原有过渡淡出，高亮同时滑进来 */
+  .mail-row[aria-current="true"]::before {
+    opacity: 0;
+  }
+  .mail-row[aria-current="true"]:focus-visible::before {
+    opacity: 1;
+    background: transparent;
+    box-shadow: 0 0 0 2px color-mix(in srgb, theme("colors.primary.DEFAULT") 55%, transparent);
+  }
+  .mail-row[aria-current="true"]::after,
+  .mail-row[aria-current="true"] + .mail-row::after {
+    opacity: 0;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .mail-row::before,
-    .mail-row::after {
+    .mail-row::after,
+    .mail-highlight {
       transition: none;
     }
+  }
+}
+
+/* ---------- 阅读面板开合动画（View Transitions，见 page.tsx 的 transitionReader） ----------
+   浏览器在开合前后各截一帧，列表和阅读面板分别做补间；顶栏、侧边栏等其余区域不参与动画。 */
+.vt-inbox-list {
+  view-transition-name: inbox-list;
+}
+.vt-reader {
+  view-transition-name: reader;
+}
+
+html[data-reader-transition]::view-transition-old(root),
+html[data-reader-transition]::view-transition-new(root) {
+  animation: none;
+}
+
+/* 宽屏：列表外框、标题右侧、每一行和行内各部分由 page.tsx 的 nameVisibleRows 临时命名，
+   各自从旧位置补间到新位置。列表不整体淡出淡入，内容全程可见，看起来是"重新排列"而不是"刷新" */
+html[data-reader-transition]::view-transition-group(*) {
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+html[data-reader-transition="close"]::view-transition-group(*) {
+  animation-duration: 320ms;
+}
+html[data-reader-transition]::view-transition-old(*),
+html[data-reader-transition]::view-transition-new(*) {
+  animation-duration: 220ms;
+}
+/* 文字类：快照按原尺寸贴左上角、超出裁掉，不随容器缩放，文字不会被拉伸 */
+html[data-reader-transition]::view-transition-group(inbox-list),
+html[data-reader-transition]::view-transition-group(*.mail-part) {
+  overflow: clip;
+}
+html[data-reader-transition]::view-transition-old(inbox-list),
+html[data-reader-transition]::view-transition-new(inbox-list),
+html[data-reader-transition]::view-transition-old(*.mail-part),
+html[data-reader-transition]::view-transition-new(*.mail-part) {
+  width: auto;
+  height: auto;
+}
+/* 外框、行底色（悬停卡片 / 选中底色）：不含文字，直接拉伸跟随尺寸变化 */
+html[data-reader-transition]::view-transition-old(*.mail-box),
+html[data-reader-transition]::view-transition-new(*.mail-box),
+html[data-reader-transition]::view-transition-old(*.mail-row-bg),
+html[data-reader-transition]::view-transition-new(*.mail-row-bg) {
+  height: 100%;
+}
+
+/* 宽屏：面板从右侧 40px 处淡入滑到位，关闭时反向退出，退出比进入短一些 */
+html[data-reader-transition="open"]::view-transition-new(reader) {
+  animation: reader-enter 380ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+html[data-reader-transition="close"]::view-transition-old(reader) {
+  animation: reader-leave 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* 窄屏：面板从屏幕右边整块滑入，列表同时向左轻微后退，像被推开（iOS 推入式导航）。
+   用 translate 而不是 transform，避免覆盖浏览器给快照组设置的定位变换 */
+@media (max-width: 1279.98px) {
+  html[data-reader-transition="open"]::view-transition-new(reader) {
+    animation: reader-sheet-enter 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  html[data-reader-transition="close"]::view-transition-old(reader) {
+    animation: reader-sheet-leave 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  html[data-reader-transition="open"]::view-transition-group(inbox-list) {
+    animation: list-recede 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  html[data-reader-transition="close"]::view-transition-group(inbox-list) {
+    animation: list-return 300ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  /* 窄屏列表本身不变（被面板盖住），不做淡入淡出，否则会在面板后面闪一下 */
+  html[data-reader-transition]::view-transition-old(inbox-list),
+  html[data-reader-transition]::view-transition-new(inbox-list) {
+    animation: none;
+  }
+}
+
+@keyframes reader-enter {
+  from {
+    opacity: 0;
+    translate: 40px 0;
+  }
+}
+@keyframes reader-leave {
+  to {
+    opacity: 0;
+    translate: 40px 0;
+  }
+}
+@keyframes reader-sheet-enter {
+  from {
+    translate: 100% 0;
+  }
+}
+@keyframes reader-sheet-leave {
+  to {
+    translate: 100% 0;
+  }
+}
+@keyframes list-recede {
+  to {
+    translate: -8% 0;
+  }
+}
+@keyframes list-return {
+  from {
+    translate: -8% 0;
   }
 }
 

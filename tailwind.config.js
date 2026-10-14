@@ -1,4 +1,5 @@
 const { heroui } = require("@heroui/react")
+const plugin = require("tailwindcss/plugin")
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -54,5 +55,14 @@ module.exports = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/line-clamp"), heroui()],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/line-clamp"),
+    heroui(),
+    plugin(({ addVariant }) => {
+      // 收件箱行按列表自身宽度（容器 .mail-list）切换单行 / 两行：
+      // 宽屏打开右侧阅读面板后列表变窄，行会自动回到两行布局
+      addVariant("list-wide", "@container mail-list (min-width: 52rem)")
+    }),
+  ],
 }

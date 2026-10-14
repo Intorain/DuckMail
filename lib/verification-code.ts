@@ -166,13 +166,53 @@ function isPlausible(code: string): boolean {
 }
 
 // ---------- 5. 文本归一化 ----------
+// 删掉 <style>…</style>、注释这类成对的块。用 indexOf 逐段查找：
+// 正则 [\s\S]*? 遇到大量没有结尾的开标签会退化成平方级，一封恶意邮件就能卡死页面
+function stripBlocks(html: string): string {
+  const lower = html.toLowerCase()
+  const opener = /<!--|<(style|script|head|title|noscript)\b/g
+  const unclosed = new Set<string>()
+  let out = ""
+  let i = 0
+  let m: RegExpExecArray | null
+  while ((m = opener.exec(lower))) {
+    const closer = m[1] ? `</${m[1]}` : "-->"
+    // 同类开标签后面已经确认没有结尾时，不再重复往后找
+    const end = unclosed.has(closer) ? -1 : lower.indexOf(closer, m.index + m[0].length)
+    if (end === -1) {
+      // 没有结尾：只当普通标签处理，后面的 stripTags 会把它去掉
+      unclosed.add(closer)
+      continue
+    }
+    const stop = m[1] ? lower.indexOf(">", end) : end + 2
+    out += html.slice(i, m.index) + " "
+    i = stop === -1 ? html.length : stop + 1
+    opener.lastIndex = i
+  }
+  return out + html.slice(i)
+}
+
+// 去掉所有标签，线性扫描（同上，避免 <[^>]+> 在没有 ">" 时回溯）
+function stripTags(html: string): string {
+  let out = ""
+  let i = 0
+  while (i < html.length) {
+    const lt = html.indexOf("<", i)
+    if (lt === -1) break
+    const gt = html.indexOf(">", lt + 1)
+    if (gt === -1) break
+    out += html.slice(i, lt) + " "
+    i = gt + 1
+  }
+  return out + html.slice(i)
+}
+
 export function htmlToText(html: string): string {
-  return html
-    .replace(/<(style|script|head|title|noscript)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(?:p|div|tr|td|th|li|h[1-6]|table|section|center)\s*>/gi, "\n")
-    .replace(/<[^>]+>/g, " ")
+  return stripTags(
+    stripBlocks(html)
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(?:p|div|tr|td|th|li|h[1-6]|table|section|center)\s*>/gi, "\n"),
+  )
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))
     .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(+d))

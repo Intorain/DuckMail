@@ -233,4 +233,11 @@ test('恶意长文本不会拖慢识别', () => {
     extractVerificationCode({ text });
     assert.ok(Date.now() - started < 500, `slow on ${JSON.stringify(text.slice(0, 20))}`);
   }
+  // 没有闭合的标签 / 注释：HTML 转文本不能退化成平方级
+  const hostileHtml = ['<a '.repeat(66000), '<style'.repeat(30000), '<!--'.repeat(50000), '<script>'.repeat(20000)];
+  for (const html of hostileHtml) {
+    const started = Date.now();
+    extractVerificationCode({ subject: '验证码', html });
+    assert.ok(Date.now() - started < 500, `slow on ${JSON.stringify(html.slice(0, 20))}`);
+  }
 });

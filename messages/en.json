@@ -172,6 +172,11 @@
     "copyShort": "Copy",
     "copiedShort": "Copied"
   },
+  "verificationLink": {
+    "label": "Verify link",
+    "open": "Open",
+    "openTitle": "Open the verification link in a new tab"
+  },
   "hostedInbox": {
     "inbox": "Inbox",
     "junk": "Junk",
@@ -221,7 +226,13 @@
     "to": "To:",
     "cc": "Cc:",
     "bcc": "Bcc:",
-    "attachments": "Attachments"
+    "attachments": "Attachments",
+    "close": "Close",
+    "prev": "Previous",
+    "next": "Next",
+    "reader": "Message",
+    "downloadEml": "Download original (.eml)",
+    "downloadFailed": "Download failed"
   },
   "accountModal": {
     "title": "Create Account",

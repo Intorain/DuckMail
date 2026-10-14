@@ -11,14 +11,17 @@ import { Mail } from "lucide-react"
 import { useTranslations } from "next-intl"
 import InboxIntro from "@/components/inbox-intro"
 import MessageRow from "@/components/message-row"
-import { useVerificationCodes } from "@/hooks/use-verification-codes"
+import SelectionHighlight from "@/components/selection-highlight"
+import { useVerificationHints } from "@/hooks/use-verification-hints"
+import { useVisibleMessages, type MessageOverrides } from "@/hooks/use-visible-messages"
 
-interface MessageListProps {
+interface MessageListProps extends MessageOverrides {
   onSelectMessage: (message: Message) => void
   refreshKey?: number
+  selectedId?: string | null
 }
 
-export default function MessageList({ onSelectMessage, refreshKey }: MessageListProps) {
+export default function MessageList({ onSelectMessage, refreshKey, selectedId, ...overrides }: MessageListProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -28,11 +31,12 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
   // 请求序号：切换账号 / 手动刷新时递增，只有最新一次请求的结果才允许写入状态，
   // 避免上一个账号仍在飞的请求（成功或失败）覆盖当前账号的数据
   const loadSeqRef = useRef(0)
-  const codes = useVerificationCodes(messages, {
+  const { codes, links } = useVerificationHints(messages, {
     token,
     providerId: currentAccount?.providerId || "duckmail",
     prefetchBody: true,
   })
+  const visible = useVisibleMessages(messages, overrides)
 
   // "3 分钟前"这类相对时间需要定期刷新；列表本身只在邮件变化时才会重新渲染
   const [, setNow] = useState(0)
@@ -138,8 +142,8 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
       <div className="mb-3 flex items-center justify-between gap-3 sm:mb-4">
         <h2 className="flex items-baseline gap-2 text-xl font-semibold text-gray-900 dark:text-gray-50">
           {t("inbox")}
-          {messages.length > 0 && (
-            <span className="text-sm font-normal tabular-nums text-gray-400 dark:text-gray-500">{messages.length}</span>
+          {visible.length > 0 && (
+            <span className="text-sm font-normal tabular-nums text-gray-400 dark:text-gray-500">{visible.length}</span>
           )}
         </h2>
         {status}
@@ -150,7 +154,7 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
 
   if (loading) {
     return (
-      <div className="h-full overflow-y-auto">
+      <div data-mail-scroller className="h-full overflow-y-auto">
         {page(
           <div className="flex items-center justify-center gap-2 py-16 text-small text-gray-500 dark:text-gray-400">
             <Spinner size="sm" color="default" />
@@ -161,9 +165,9 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
     )
   }
 
-  if (messages.length === 0) {
+  if (visible.length === 0) {
     return (
-      <div className="h-full overflow-y-auto">
+      <div data-mail-scroller className="h-full overflow-y-auto">
         {page(
           <div className="flex flex-col items-center py-16 text-center">
             <Mail className="mb-4 h-8 w-8 text-gray-300 dark:text-gray-600" strokeWidth={1.5} />
@@ -187,7 +191,7 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div data-mail-scroller className="h-full overflow-y-auto">
       {page(
         <>
           {error && (
@@ -195,13 +199,21 @@ export default function MessageList({ onSelectMessage, refreshKey }: MessageList
               {error}
             </p>
           )}
-          <div className="rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
-            {messages.map((message) => (
-              <MessageRow key={message.id} message={message} code={codes.get(message.id)} onSelect={onSelectMessage} />
+          <div className="mail-list rounded-xl border border-gray-200 bg-white p-1 dark:border-gray-800 dark:bg-gray-900">
+            <SelectionHighlight selectedId={selectedId} layoutKey={visible} />
+            {visible.map((message) => (
+              <MessageRow
+                key={message.id}
+                message={message}
+                code={codes.get(message.id)}
+                link={links.get(message.id)}
+                selected={message.id === selectedId}
+                onSelect={onSelectMessage}
+              />
             ))}
           </div>
         </>,
-        <span className="flex shrink-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+        <span data-inbox-aside className="flex shrink-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
           <span className={`h-1.5 w-1.5 rounded-full ${isEnabled ? "bg-green-500" : "bg-gray-300 dark:bg-gray-600"}`} />
           {isEnabled ? t("pollingActive") : t("pollingPaused")}
         </span>,

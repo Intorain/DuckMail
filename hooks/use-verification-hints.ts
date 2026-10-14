@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { getMessage } from "@/lib/api"
 import { extractVerificationCode } from "@/lib/verification-code"
+import { extractVerificationLink, type VerificationLink } from "@/lib/verification-link"
 import type { Message } from "@/types"
 
 // 只为最新的几封邮件补取正文：验证码邮件几乎总是最新到达的那封
@@ -10,7 +11,7 @@ const PREFETCH_LIMIT = 10
 const RETRY_AFTER_MS = 15_000
 
 // 模块级缓存：邮件正文不会变，同一封邮件在列表 / 详情间切换时只取一次
-const bodyCodes = new Map<string, string | null>()
+const bodyHints = new Map<string, { code: string | null; link: VerificationLink | null }>()
 const inflight = new Set<string>()
 const failedAt = new Map<string, number>()
 
@@ -24,10 +25,10 @@ interface Options {
 }
 
 /**
- * 返回 messageId -> 验证码 的映射。先用主题 + 摘要识别；
- * 摘要为空且主题里没有验证码时，按需拉取详情正文再识别（不会标记已读）。
+ * 返回 messageId -> 验证码 / 验证链接 的映射。验证码先用主题 + 摘要识别；
+ * 摘要为空且主题里没有验证码时，按需拉取详情正文再识别（不会标记已读），验证链接只从正文里识别。
  */
-export function useVerificationCodes(messages: Message[], { token, providerId, prefetchBody = false }: Options) {
+export function useVerificationHints(messages: Message[], { token, providerId, prefetchBody = false }: Options) {
   const [version, setVersion] = useState(0)
 
   const quick = useMemo(() => {
@@ -48,7 +49,7 @@ export function useVerificationCodes(messages: Message[], { token, providerId, p
         return (
           !m.intro &&
           !quick.get(m.id) &&
-          !bodyCodes.has(key) &&
+          !bodyHints.has(key) &&
           !inflight.has(key) &&
           now - (failedAt.get(key) ?? 0) > RETRY_AFTER_MS
         )
@@ -62,11 +63,12 @@ export function useVerificationCodes(messages: Message[], { token, providerId, p
         inflight.add(key)
         try {
           const detail = await getMessage(token, m.id, providerId)
-          bodyCodes.set(key, extractVerificationCode({ subject: detail.subject, text: detail.text, html: detail.html }))
+          const body = { subject: detail.subject, text: detail.text, html: detail.html }
+          bodyHints.set(key, { code: extractVerificationCode(body), link: extractVerificationLink(body) })
           failedAt.delete(key)
         } catch (err) {
           failedAt.set(key, Date.now())
-          console.warn("Failed to fetch message body for code detection:", err)
+          console.warn("Failed to fetch message body for verification hints:", err)
         } finally {
           inflight.delete(key)
         }
@@ -77,12 +79,15 @@ export function useVerificationCodes(messages: Message[], { token, providerId, p
   }, [messages, quick, token, providerId, prefetchBody])
 
   return useMemo(() => {
-    const out = new Map<string, string>()
+    const codes = new Map<string, string>()
+    const links = new Map<string, VerificationLink>()
     for (const m of messages) {
-      const code = quick.get(m.id) ?? bodyCodes.get(cacheKey(m))
-      if (code) out.set(m.id, code)
+      const body = bodyHints.get(cacheKey(m))
+      const code = quick.get(m.id) ?? body?.code
+      if (code) codes.set(m.id, code)
+      if (body?.link) links.set(m.id, body.link)
     }
-    return out
+    return { codes, links }
     // version 变化代表异步识别有了新结果
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, quick, version])

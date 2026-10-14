@@ -172,6 +172,11 @@
     "copyShort": "复制",
     "copiedShort": "已复制"
   },
+  "verificationLink": {
+    "label": "验证链接",
+    "open": "打开",
+    "openTitle": "在新标签页打开验证链接"
+  },
   "hostedInbox": {
     "inbox": "收件箱",
     "junk": "垃圾邮件",
@@ -221,7 +226,13 @@
     "to": "收件人：",
     "cc": "抄送：",
     "bcc": "密送：",
-    "attachments": "附件"
+    "attachments": "附件",
+    "close": "关闭",
+    "prev": "上一封",
+    "next": "下一封",
+    "reader": "邮件内容",
+    "downloadEml": "下载原始邮件 (.eml)",
+    "downloadFailed": "下载失败"
   },
   "accountModal": {
     "title": "创建账户",
