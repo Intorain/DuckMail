@@ -15,7 +15,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./img/duckmail-dark.png">
-  <img src="./img/duckmail-light.png" alt="DuckMail mailbox list and inbox (demo data)">
+  <img src="./img/duckmail-light.png" alt="DuckMail mailbox list, inbox and reading pane (demo data)">
 </picture>
 
 ## Features

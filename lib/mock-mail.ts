@@ -292,7 +292,7 @@ function toMessage(m: MockMail): Message {
     accountId: "mock",
     msgid: m.id,
     from: { name: m.fromName, address: m.fromAddress },
-    to: [{ name: "", address: "you@duckmail.sbs" }],
+    to: [{ name: "", address: "demo@duckmail.sbs" }],
     subject: m.subject,
     // 与 DuckMail 后端一致：列表不返回正文摘要
     intro: "",

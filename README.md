@@ -15,7 +15,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./img/duckmail-dark.png">
-  <img src="./img/duckmail-light.png" alt="DuckMail 多邮箱管理与收件箱（演示数据）">
+  <img src="./img/duckmail-light.png" alt="DuckMail 多邮箱管理、收件箱与阅读面板（演示数据）">
 </picture>
 
 ## 功能
